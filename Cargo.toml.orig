@@ -1,0 +1,25 @@
+[package]
+name = "win_partitions"
+version = "0.3.0"
+authors = ["AliAkbar Shahi", "Hamed J.I"]
+edition = "2018"
+license = "MIT"
+description = "Provides list of system partitions and their information for Windows"
+keywords = ["partition", "drive", "windows"]
+categories = ["hardware-support"]
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-msvc"
+targets = [
+    "x86_64-pc-windows-msvc",
+    "x86_64-pc-windows-gnu",
+    "i686-pc-windows-msvc",
+    "i686-pc-windows-gnu",
+]
+
+[dependencies]
+windows = "0.18.0"
+
+[build-dependencies]
+windows = "0.18.0"
