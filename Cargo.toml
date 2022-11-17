@@ -24,6 +24,6 @@ license = "MIT"
 default-target = "x86_64-pc-windows-msvc"
 targets = ["x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu", "i686-pc-windows-msvc", "i686-pc-windows-gnu"]
 [dependencies.windows]
-version = "0.18.0"
+version = "0.42"
 [build-dependencies.windows]
-version = "0.18.0"
+version = "0.42"
