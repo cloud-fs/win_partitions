@@ -39,13 +39,14 @@ pub fn get_partitions() -> Result<Vec<WindowsPartition>, Error> {
                 total_size = value.1;
                 free_space = value.2;
             }
-            Err(err) => {
-                if err.raw_os_error().is_some() &&
-                    err.raw_os_error().unwrap() == 21 {
-                    ready = false;
-                } else {
-                    return Err(err);
-                }
+            Err(_err) => {
+                ready = false;
+                // if err.raw_os_error().is_some() &&
+                //     err.raw_os_error().unwrap() == 21 {
+                //     ready = false;
+                // } else {
+                //     return Err(err);
+                // }
             }
         };
         match get_volume_information(path.to_string()) {
@@ -53,13 +54,14 @@ pub fn get_partitions() -> Result<Vec<WindowsPartition>, Error> {
                 name = value.0;
                 file_system_name = value.1;
             }
-            Err(err) => {
-                if err.raw_os_error().is_some() &&
-                    err.raw_os_error().unwrap() == 21 {
-                    ready = false;
-                } else {
-                    return Err(err);
-                }
+            Err(_err) => {
+                ready = false;
+                // if err.raw_os_error().is_some() &&
+                //     err.raw_os_error().unwrap() == 21 {
+                //     ready = false;
+                // } else {
+                //     return Err(err);
+                // }
             }
         }
         result.push(WindowsPartition {
