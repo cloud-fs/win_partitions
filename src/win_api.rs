@@ -1,15 +1,12 @@
-use std::io::{Error};
+use std::io::Error;
 
-use crate::bindings::{
-    Windows::Win32::Foundation::PWSTR,
-    Windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW,
-    Windows::Win32::Storage::FileSystem::GetDriveTypeW,
-    Windows::Win32::Storage::FileSystem::GetLogicalDrives,
-    Windows::Win32::Storage::FileSystem::GetVolumeInformationW,
+use windows::core::PCWSTR;
+use windows::Win32::Storage::FileSystem::{
+    GetDiskFreeSpaceExW, GetDriveTypeW, GetLogicalDrives, GetVolumeInformationW,
 };
 
 /// Creates Rust String from vector u16
-fn vec_u16_to_string(vec: &Vec<u16>) -> String {
+fn vec_u16_to_string(vec: &[u16]) -> String {
     let mut index = 0;
     for item in 0..vec.len() {
         if vec[item] == 0 {
@@ -61,37 +58,39 @@ impl From<u32> for DriveType {
 ///
 /// Minimum OS Version: Windows XP/Windows Server 2003
 pub fn get_volume_information(
-    lprootpathname: String
+    lprootpathname: String,
 ) -> Result<(String, String, u32, u32, u32), Error> {
     // Maximum Volume name length is 32 characters which is equivalent to 64 unicode bytes
-    let mut volume_name_buf: Vec<u16> = Vec::with_capacity(64);
-    volume_name_buf.resize(64, 0);
-
-    let mut file_system_name_buf: Vec<u16> = Vec::with_capacity(255);
-    file_system_name_buf.resize(255, 0);
-
-    let pwstr_volume_name: PWSTR = PWSTR(volume_name_buf.as_mut_ptr());
-    let pwstr_file_system_name: PWSTR = PWSTR(file_system_name_buf.as_mut_ptr());
+    let mut volume_name_buf: Vec<u16> = vec![0u16; 64];
+    let mut file_system_name_buf: Vec<u16> = vec![0u16; 255];
 
     let mut lpvolumeserialnumber: u32 = 0;
     let mut lpmaximumcomponentlength: u32 = 0;
     let mut lpfilesystemflags: u32 = 0;
+
+    let path_wide: Vec<u16> = lprootpathname.encode_utf16().chain(std::iter::once(0)).collect();
+
     let result = unsafe {
         GetVolumeInformationW(
-            lprootpathname,
-            pwstr_volume_name,
-            volume_name_buf.capacity() as u32,
-            &mut lpvolumeserialnumber,
-            &mut lpmaximumcomponentlength,
-            &mut lpfilesystemflags,
-            pwstr_file_system_name,
-            file_system_name_buf.capacity() as u32).as_bool()
+            PCWSTR(path_wide.as_ptr()),
+            Some(&mut volume_name_buf),
+            Some(&mut lpvolumeserialnumber),
+            Some(&mut lpmaximumcomponentlength),
+            Some(&mut lpfilesystemflags),
+            Some(&mut file_system_name_buf),
+        )
     };
 
-    if result {
+    if result.is_ok() {
         let result_volume_name = vec_u16_to_string(&volume_name_buf);
         let result_volume_system_name = vec_u16_to_string(&file_system_name_buf);
-        Ok((result_volume_name, result_volume_system_name, lpvolumeserialnumber, lpmaximumcomponentlength, lpfilesystemflags))
+        Ok((
+            result_volume_name,
+            result_volume_system_name,
+            lpvolumeserialnumber,
+            lpmaximumcomponentlength,
+            lpfilesystemflags,
+        ))
     } else {
         Err(Error::last_os_error())
     }
@@ -101,15 +100,9 @@ pub fn get_volume_information(
 /// API function.
 ///
 /// Minimum OS: Windows XP/Windows Server 2003
-pub fn get_drive_type(
-    lprootpathname: String,
-) -> DriveType {
-    let result = unsafe {
-        GetDriveTypeW(
-            lprootpathname
-        )
-    };
-
+pub fn get_drive_type(lprootpathname: String) -> DriveType {
+    let path_wide: Vec<u16> = lprootpathname.encode_utf16().chain(std::iter::once(0)).collect();
+    let result = unsafe { GetDriveTypeW(PCWSTR(path_wide.as_ptr())) };
     DriveType::from(result)
 }
 
@@ -117,23 +110,28 @@ pub fn get_drive_type(
 /// Windows API and returns tuple of (free bytes available to caller, total number of bytes, total number of free bytes)
 ///
 /// Minimum OS: Windows XP/Windows Server 2003
-pub fn get_disk_free_space(
-    lpdirectoryname: String
-) -> Result<(u64, u64, u64), Error> {
+pub fn get_disk_free_space(lpdirectoryname: String) -> Result<(u64, u64, u64), Error> {
     let mut lpfreebytesavailabletocaller: u64 = 0;
     let mut lptotalnumberofbytes: u64 = 0;
     let mut lptotalnumberoffreebytes: u64 = 0;
-    let result =
-        unsafe {
-            GetDiskFreeSpaceExW(
-                lpdirectoryname,
-                &mut lpfreebytesavailabletocaller,
-                &mut lptotalnumberofbytes,
-                &mut lptotalnumberoffreebytes).as_bool()
-        };
 
-    if result {
-        Ok((lpfreebytesavailabletocaller, lptotalnumberofbytes, lptotalnumberoffreebytes))
+    let path_wide: Vec<u16> = lpdirectoryname.encode_utf16().chain(std::iter::once(0)).collect();
+
+    let result = unsafe {
+        GetDiskFreeSpaceExW(
+            PCWSTR(path_wide.as_ptr()),
+            Some(&mut lpfreebytesavailabletocaller),
+            Some(&mut lptotalnumberofbytes),
+            Some(&mut lptotalnumberoffreebytes),
+        )
+    };
+
+    if result.is_ok() {
+        Ok((
+            lpfreebytesavailabletocaller,
+            lptotalnumberofbytes,
+            lptotalnumberoffreebytes,
+        ))
     } else {
         Err(Error::last_os_error())
     }
@@ -154,7 +152,7 @@ pub fn get_logical_drive() -> Result<Vec<char>, Error> {
                 let char = std::char::from_u32(index + 64);
                 result.push(char.unwrap());
             }
-            mask = mask << 1;
+            mask <<= 1;
         }
 
         Ok(result)
